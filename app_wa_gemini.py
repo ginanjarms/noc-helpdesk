@@ -19,9 +19,18 @@ with st.sidebar:
       "Railway URL",
       value="https://wa-gateway-production-b3e5.up.railway.app/send",
   )
+  
+  # API Key langsung di-hardcode agar tidak hilang saat refresh
+  # Mengambil API Key dari secrets Streamlit secara aman agar lolos GitHub
+  api_key_default = ""
+  try:
+    api_key_default = st.secrets["GEMINI_API_KEY"]
+  except Exception:
+    api_key_default = ""
+
   GEMINI_API_KEY = st.text_input(
       "Gemini API Key",
-      value="",
+      value=api_key_default,
       type="password",
   )
 
@@ -91,10 +100,10 @@ if prompt := st.chat_input(
 
   if (
       st.session_state.sop_step == 0
-      and "mulai" in lower_prompt
+      and ("mulai" in lower_prompt
       or "lapor" in lower_prompt
       or "mati" in lower_prompt
-      or "kendala" in lower_prompt
+      or "kendala" in lower_prompt)
   ):
     st.session_state.sop_step = 1
     response_text = (
@@ -107,8 +116,8 @@ if prompt := st.chat_input(
 
   elif (
       st.session_state.sop_step == 1
-      and "sudah" in lower_prompt
-      or "restart" in lower_prompt
+      and ("sudah" in lower_prompt
+      or "restart" in lower_prompt)
   ):
     st.session_state.sop_step = 2
     response_text = (
