@@ -19,9 +19,7 @@ with st.sidebar:
       "Railway URL",
       value="https://wa-gateway-production-b3e5.up.railway.app/send",
   )
-  
-  # API Key langsung di-hardcode agar tidak hilang saat refresh
-  # Mengambil API Key dari secrets Streamlit secara aman agar lolos GitHub
+
   api_key_default = ""
   try:
     api_key_default = st.secrets["GEMINI_API_KEY"]
@@ -36,7 +34,6 @@ with st.sidebar:
 
   st.markdown("---")
   st.header("👥 Pelanggan Aktif")
-  # Input dinamis untuk nomor pelanggan yang sedang dilayani
   current_customer = st.text_input(
       "Nomor WA Pelanggan Saat Ini:",
       value="6285694291160",
@@ -57,8 +54,8 @@ if "messages" not in st.session_state:
       "role": "assistant",
       "content": (
           f"Halo! Terhubung dengan Layanan Bantuan NOC untuk nomor"
-          f" **{current_customer}**. Ada kendala internet apa yang sedang"
-          " dialami? (Ketik 'mulai' untuk menjalankan SOP)"
+          " f **{current_customer}**. Ada kendala internet apa yang sedang"
+          " dialami?"
       ),
   }]
 
@@ -89,15 +86,14 @@ def kirim_ke_wa(nomor, pesan):
 if prompt := st.chat_input(
     f"Ketik balasan untuk pelanggan {current_customer}..."
 ):
-  # Tambahkan pesan ke UI
   st.session_state.messages.append({"role": "user", "content": prompt})
   with st.chat_message("user"):
     st.markdown(prompt)
 
-  # Logika SOP NOC Berdasarkan Tahapan
   response_text = ""
   lower_prompt = prompt.lower()
 
+  # Logika SOP NOC dengan bahasa santai sehari-hari (tanpa format formal/SOP kaku)
   if (
       st.session_state.sop_step == 0
       and ("mulai" in lower_prompt
@@ -107,23 +103,24 @@ if prompt := st.chat_input(
   ):
     st.session_state.sop_step = 1
     response_text = (
-        "**[SOP Langkah 1]** Baik Kak, mari kita coba perbaiki secara mandiri"
-        " dulu ya. Silakan lakukan **Restart Modem** (cabut kabel"
-        " power/adaptor modem, tunggu 1-2 menit, lalu colokkan kembali).\n\nApakah"
-        " lampu indikator sudah menyala normal? Ketik **'sudah restart'** jika"
-        " sudah dicoba."
+        "Halo Kak, coba kita beresin dulu dari rumah ya. Boleh minta"
+        " tolong restart modemnya? Caranya cabut kabel adaptor listriknya,"
+        " tunggu sekitar 1-2 menit, terus colokin lagi.\n\nKira-kira lampu"
+        " indikatornya udah nyala normal belum? Kalau udah dicoba kabari lagi"
+        " ya."
     )
 
   elif (
       st.session_state.sop_step == 1
       and ("sudah" in lower_prompt
-      or "restart" in lower_prompt)
+      or "restart" in lower_prompt
+      or "nyala" in lower_prompt)
   ):
     st.session_state.sop_step = 2
     response_text = (
-        "**[SOP Langkah 2]** Baik. Jika internet masih belum bisa, silakan"
-        " periksa fisik modem Anda. **Apakah ada lampu indikator 'LOS' yang"
-        " menyala warna merah?**"
+        "Sip. Kalau internetnya masih belum connect juga, coba dicek fisik"
+        " modemnya ya Kak. **Ada lampu indikator yang nyala merah atau tulisannya"
+        " LOS nggak?**"
     )
 
   elif st.session_state.sop_step == 2 and (
@@ -131,39 +128,45 @@ if prompt := st.chat_input(
   ):
     st.session_state.sop_step = 3
     response_text = (
-        "**[Eskalasi SOP 2]** Wah, jika lampu LOS menyala merah, artinya ada"
-        " gangguan pada jalur kabel optik di luar. Tim teknisi lapangan akan"
-        " kami jadwalkan untuk pengecekan lokasi. Mohon tunggu sebentar ya"
-        " Kak."
+        "Waduh, kalau lampu LOS-nya nyala merah berarti ada gangguan di kabel"
+        " luar nih Kak. Nanti saya bantu teruskan dan jadwalkan tim teknisi"
+        " lapangan buat ngecek ke lokasi ya. Ditunggu sebentar ya Kak."
     )
 
   elif st.session_state.sop_step == 2 and (
-      "tidak" in lower_prompt or "normal" in lower_prompt
+      "tidak" in lower_prompt
+      or "normal" in lower_prompt
+      or "nggak" in lower_prompt
+      or "tdk" in lower_prompt
   ):
     st.session_state.sop_step = 3
     response_text = (
-        "**[SOP Langkah 3]** Bagus jika lampu LOS tidak merah. Selanjutnya,"
-        " mari kita **cek status koneksi Wi-Fi** di perangkat HP/Laptop Anda."
-        " Apakah SSID/nama Wi-Fi Anda terdeteksi dan bisa tersambung?"
+        "Oke aman kalau lampu LOS-nya nggak merah. Sekarang coba dicek koneksi"
+        " Wi-Fi di HP atau laptopnya, nama Wi-Fi (SSID)-nya kedeteksi nggak"
+        " dan bisa nyambung?"
     )
 
   else:
-    # Menggunakan Gemini 3.6 Flash dengan instruksi store/lokasi
+    # Memperbaiki variabel prompt_user agar mengambil data dari inputan chat asli
     url_gemini = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}"
+    
     payload_gemini = {
-        "systemInstruction": {
-            "parts": [{
-                "text": (
-                    "Kamu adalah asisten NOC internet yang ramah dan profesional."
-                    " Jika pelanggan melaporkan kendala internet atau meminta"
-                    " pengecekan jaringan tetapi belum menyebutkan nama"
-                    " store/lokasi atau ID pelanggan, mintalah mereka dengan"
-                    " sopan untuk menginformasikan nama store atau lokasi cabangnya"
-                    " terlebih dahulu."
-                )
-            }]
-        },
-        "contents": [{"parts": [{"text": prompt}]}],
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": (
+                            "Bertindaklah sebagai teknisi NOC yang ramah dan "
+                            "menggunakan bahasa obrolan sehari-hari yang santai, "
+                            "tidak kaku, dan tidak usah pakai format baku atau "
+                            "label SOP seperti '[SOP Langkah 1]'. Langsung berikan "
+                            "solusi dengan bahasa obrolan biasa.\n\nPesan dari Pelanggan: "
+                            f"{prompt}"
+                        )
+                    }
+                ]
+            }
+        ]
     }
 
     try:
@@ -175,12 +178,13 @@ if prompt := st.chat_input(
         ]
       else:
         response_text = (
-            "Terima kasih informasinya, mohon infokan nama store atau lokasi"
-            " cabangnya terlebih dahulu agar bisa kami bantu cek."
+            "Makasih infonya ya Kak, boleh infokan nama store atau lokasi"
+            " cabangnya sekalian biar saya gampang cek di sistem?"
         )
     except Exception:
       response_text = (
-          "Terima kasih informasinya, laporan Anda sedang diproses."
+          "Baik Kak, laporan kendalanya sudah saya catat dan sedang dicek"
+          " sebentar ya."
       )
 
   # Tampilkan balasan bot di UI
